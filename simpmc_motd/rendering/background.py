@@ -430,11 +430,14 @@ def fetch_image_data_uri(url: str, timeout: float, max_bytes: int) -> str:
                 raise OSError(f"背景地址返回 HTTP {response.status}")
 
             content_length = response.headers.get("Content-Length")
-            if content_length:
+            declared_length: int | None = None
+            if content_length is not None:
                 try:
                     declared_length = int(content_length)
                 except (TypeError, ValueError, OverflowError):
-                    declared_length = 0
+                    raise ValueError("背景地址返回了无效的 Content-Length") from None
+                if declared_length < 0:
+                    raise ValueError("背景地址返回了无效的 Content-Length")
                 if declared_length > max_bytes:
                     raise ValueError("背景图超过大小限制")
             declared_type = response.headers.get_content_type().lower()
@@ -443,6 +446,14 @@ def fetch_image_data_uri(url: str, timeout: float, max_bytes: int) -> str:
                 if guessed not in ALLOWED_IMAGE_TYPES:
                     raise ValueError(f"背景地址返回了不支持的图片类型: {declared_type}")
             data = _read_response_body(response, connection, deadline, max_bytes)
+            # Closing a socket from the absolute-deadline guard is reported as
+            # EOF rather than TimeoutError by some Python/OS combinations.  Do
+            # not accept that partial prefix as a complete image merely because
+            # it already contains a valid PNG/JPEG/WebP header.
+            if deadline_guard.expired or time.monotonic() >= deadline:
+                raise TimeoutError("背景图下载超时")
+            if declared_length is not None and len(data) != declared_length:
+                raise OSError("背景图响应正文不完整")
         except Exception as exc:
             if deadline_guard.expired or time.monotonic() >= deadline:
                 raise TimeoutError("背景图下载超时") from exc

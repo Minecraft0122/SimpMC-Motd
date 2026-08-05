@@ -266,66 +266,66 @@ class BackgroundValidationTests(unittest.TestCase):
             do_handshake_on_connect=False,
         )
 
-    def test_slow_trickle_body_cannot_exceed_absolute_deadline(self) -> None:
+    def test_body_eof_after_absolute_deadline_is_timeout(self) -> None:
+        clock = [100.0]
         body = _decode_data_uri(fallback_background_data_uri(16, 16))
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind(("127.0.0.1", 0))
-        server.listen(1)
-        port = int(server.getsockname()[1])
-        finished = threading.Event()
+        response = Mock()
+        response.status = 200
+        response.headers.get.return_value = str(len(body))
+        response.headers.get_content_type.return_value = "image/png"
+        reads = iter((body[:24], b""))
 
-        def serve() -> None:
-            try:
-                with server:
-                    client, _address = server.accept()
-                    with client:
-                        request = b""
-                        while b"\r\n\r\n" not in request:
-                            chunk = client.recv(4096)
-                            if not chunk:
-                                return
-                            request += chunk
-                        client.sendall(
-                            b"HTTP/1.1 200 OK\r\n"
-                            + f"Content-Length: {len(body)}\r\n".encode("ascii")
-                            + b"Content-Type: image/png\r\nConnection: close\r\n\r\n"
-                        )
-                        chunk_size = max(1, len(body) // 4)
-                        for offset in range(0, len(body), chunk_size):
-                            time.sleep(0.08)
-                            client.sendall(body[offset : offset + chunk_size])
-            except OSError:
-                pass
-            finally:
-                finished.set()
+        def read1(_size: int) -> bytes:
+            # Linux commonly reports EOF when another thread shuts down the
+            # deadline-owned socket, while Windows raises OSError instead.
+            chunk = next(reads)
+            clock[0] = 100.1 if chunk else 100.21
+            return chunk
 
-        server_thread = threading.Thread(target=serve, daemon=True)
-        server_thread.start()
-        pinned_localhost = [
-            (
-                socket.AF_INET,
-                socket.SOCK_STREAM,
-                socket.IPPROTO_TCP,
-                ("127.0.0.1", port),
-            )
-        ]
-        started = time.monotonic()
+        response.read1.side_effect = read1
+        connection = Mock()
+        connection.sock = Mock()
+        deadline_guard = Mock(expired=False)
         with (
             patch(
-                "simpmc_motd.rendering.background._resolve_public_addresses",
-                return_value=pinned_localhost,
+                "simpmc_motd.rendering.background.time.monotonic",
+                side_effect=lambda: clock[0],
+            ),
+            patch(
+                "simpmc_motd.rendering.background._open_public_response",
+                return_value=(connection, response, deadline_guard),
             ),
             self.assertRaisesRegex(TimeoutError, "下载超时"),
         ):
             fetch_image_data_uri(
-                f"http://background.example:{port}/image.png",
+                "http://background.example/image.png",
                 timeout=0.2,
                 max_bytes=1024 * 1024,
             )
-        elapsed = time.monotonic() - started
 
-        self.assertLess(elapsed, 0.6)
-        self.assertTrue(finished.wait(timeout=1.0))
+    def test_body_eof_before_content_length_is_rejected(self) -> None:
+        body = _decode_data_uri(fallback_background_data_uri(16, 16))
+        response = Mock()
+        response.status = 200
+        response.headers.get.return_value = str(len(body))
+        response.headers.get_content_type.return_value = "image/png"
+        response.read1.side_effect = (body[:24], b"")
+        connection = Mock()
+        connection.sock = Mock()
+        deadline_guard = Mock(expired=False)
+
+        with (
+            patch(
+                "simpmc_motd.rendering.background._open_public_response",
+                return_value=(connection, response, deadline_guard),
+            ),
+            self.assertRaisesRegex(OSError, "正文不完整"),
+        ):
+            fetch_image_data_uri(
+                "http://background.example/image.png",
+                timeout=1.0,
+                max_bytes=1024 * 1024,
+            )
 
 
 class BackgroundImageServiceTests(unittest.IsolatedAsyncioTestCase):
