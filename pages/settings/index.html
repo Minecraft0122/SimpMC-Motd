@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>SimpMC-Motd settings</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#settings-form" data-i18n="accessibility.skip">
+      跳到设置表单
+    </a>
+
+    <main class="page-shell">
+      <header class="hero" aria-labelledby="page-title">
+        <div class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="hero-copy">
+          <p class="eyebrow">SimpMC · Minecraft Status</p>
+          <h1 id="page-title" data-i18n="title">settings</h1>
+          <p class="hero-description" data-i18n="subtitle">
+            在 AstrBot 控制台中集中管理 MOTD 查询、群服映射与状态图片。
+          </p>
+        </div>
+        <div
+          id="connection-status"
+          class="connection-status"
+          data-state="loading"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="connection-status-text">正在连接</span>
+        </div>
+      </header>
+
+      <aside class="console-notice" aria-labelledby="console-notice-title">
+        <div class="notice-icon" aria-hidden="true">i</div>
+        <div>
+          <h2 id="console-notice-title" data-i18n="notice.title">仅限控制台配置</h2>
+          <p data-i18n="notice.body">
+            MOTD 设置只能在此 AstrBot WebUI 页面修改，群聊中不提供设置或清除指令。
+          </p>
+        </div>
+        <div class="trigger-summary" aria-label="MOTD 触发词" data-i18n-aria="notice.triggersLabel">
+          <span data-i18n="notice.triggerPrefix">消息触发</span>
+          <kbd>/motd</kbd>
+          <span aria-hidden="true">·</span>
+          <kbd>motd</kbd>
+        </div>
+      </aside>
+
+      <form id="settings-form" novalidate aria-busy="true">
+        <fieldset id="settings-fields" class="settings-fields" disabled>
+          <legend class="sr-only" data-i18n="form.legend">SimpMC-Motd 设置</legend>
+
+          <div class="dashboard-grid">
+            <fieldset class="settings-card card-server">
+              <legend>
+                <span class="section-number" aria-hidden="true">01</span>
+                <span data-i18n="sections.server.title">默认服务器</span>
+              </legend>
+              <p class="section-description" data-i18n="sections.server.description">
+                未单独映射的会话将使用这里的 Minecraft Java 服务器。
+              </p>
+
+              <div class="field-grid field-grid-two">
+                <div class="field field-wide">
+                  <label for="server_name" data-i18n="fields.server_name.label">显示名称</label>
+                  <input
+                    id="server_name"
+                    name="server_name"
+                    type="text"
+                    maxlength="128"
+                    autocomplete="off"
+                    aria-describedby="server_name-help"
+                  />
+                  <p id="server_name-help" class="field-help" data-i18n="fields.server_name.help">
+                    显示在状态图片顶部的服务器名称。
+                  </p>
+                </div>
+
+                <div class="field field-wide">
+                  <label for="host" data-i18n="fields.host.label">服务器地址</label>
+                  <input
+                    id="host"
+                    name="host"
+                    type="text"
+                    maxlength="255"
+                    required
+                    spellcheck="false"
+                    autocomplete="off"
+                    placeholder="mc.example.com"
+                    aria-describedby="host-help"
+                  />
+                  <p id="host-help" class="field-help" data-i18n="fields.host.help">
+                    仅填写主机名或 IP，端口在右侧单独设置。
+                  </p>
+                </div>
+
+                <div class="field">
+                  <label for="port" data-i18n="fields.port.label">端口</label>
+                  <input id="port" name="port" type="number" min="1" max="65535" step="1" required />
+                </div>
+
+                <div class="field">
+                  <label for="protocol_version" data-i18n="fields.protocol_version.label">协议版本</label>
+                  <input
+                    id="protocol_version"
+                    name="protocol_version"
+                    type="number"
+                    min="1"
+                    max="2147483647"
+                    step="1"
+                    required
+                    aria-describedby="protocol_version-help"
+                  />
+                  <p id="protocol_version-help" class="field-help" data-i18n="fields.protocol_version.help">
+                    仅用于状态握手，通常保持默认值即可。
+                  </p>
+                </div>
+              </div>
+
+              <label class="toggle-row" for="send_latency_ping">
+                <span>
+                  <strong data-i18n="fields.send_latency_ping.label">发送延迟 Ping</strong>
+                  <small data-i18n="fields.send_latency_ping.help">状态查询后额外发送 latency ping 包。</small>
+                </span>
+                <span class="switch">
+                  <input id="send_latency_ping" name="send_latency_ping" type="checkbox" />
+                  <span class="switch-track" aria-hidden="true"></span>
+                </span>
+              </label>
+            </fieldset>
+
+            <fieldset class="settings-card card-access">
+              <legend>
+                <span class="section-number" aria-hidden="true">02</span>
+                <span data-i18n="sections.access.title">会话权限</span>
+              </legend>
+              <p class="section-description" data-i18n="sections.access.description">
+                控制哪些会话可以触发图片生成；所有设置仍只能由控制台修改。
+              </p>
+
+              <div class="toggle-stack">
+                <label class="toggle-row" for="allow_private_chat">
+                  <span>
+                    <strong data-i18n="fields.allow_private_chat.label">允许私聊查询</strong>
+                    <small data-i18n="fields.allow_private_chat.help">私聊发送 motd 或 /motd 时生成图片。</small>
+                  </span>
+                  <span class="switch">
+                    <input id="allow_private_chat" name="allow_private_chat" type="checkbox" />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </span>
+                </label>
+
+                <label class="toggle-row" for="use_default_server_for_unconfigured_groups">
+                  <span>
+                    <strong data-i18n="fields.use_default_server_for_unconfigured_groups.label">未配置群使用默认服</strong>
+                    <small data-i18n="fields.use_default_server_for_unconfigured_groups.help">关闭后，群必须在下方建立服务器映射。</small>
+                  </span>
+                  <span class="switch">
+                    <input
+                      id="use_default_server_for_unconfigured_groups"
+                      name="use_default_server_for_unconfigured_groups"
+                      type="checkbox"
+                    />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </span>
+                </label>
+
+                <label class="toggle-row" for="enable_group_whitelist">
+                  <span>
+                    <strong data-i18n="fields.enable_group_whitelist.label">启用群白名单</strong>
+                    <small data-i18n="fields.enable_group_whitelist.help">只允许白名单或群服映射中出现的群查询。</small>
+                  </span>
+                  <span class="switch">
+                    <input id="enable_group_whitelist" name="enable_group_whitelist" type="checkbox" />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </span>
+                </label>
+              </div>
+
+              <div class="field whitelist-field">
+                <label for="group_whitelist" data-i18n="fields.group_whitelist.label">群白名单</label>
+                <textarea
+                  id="group_whitelist"
+                  name="group_whitelist"
+                  rows="4"
+                  spellcheck="false"
+                  placeholder="group:123456789&#10;qq:group:987654321"
+                  aria-describedby="group_whitelist-help"
+                ></textarea>
+                <p id="group_whitelist-help" class="field-help" data-i18n="fields.group_whitelist.help">
+                  支持逗号、空格或换行分隔；平台前缀可用于精确隔离。
+                </p>
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-card card-groups">
+              <legend>
+                <span class="section-number" aria-hidden="true">03</span>
+                <span data-i18n="sections.groups.title">群服映射</span>
+              </legend>
+              <div class="section-heading-row">
+                <p class="section-description" data-i18n="sections.groups.description">
+                  为指定平台群会话绑定独立服务器。修改仅在保存后生效。
+                </p>
+                <button id="add-group-server" class="button button-secondary button-small" type="button">
+                  <span aria-hidden="true">＋</span>
+                  <span data-i18n="groups.add">添加映射</span>
+                </button>
+              </div>
+
+              <div class="table-shell">
+                <table class="group-table">
+                  <caption class="sr-only" data-i18n="groups.caption">群会话与 Minecraft 服务器映射</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" data-i18n="groups.scope">会话范围</th>
+                      <th scope="col" data-i18n="groups.address">服务器地址</th>
+                      <th scope="col" data-i18n="groups.name">显示名称</th>
+                      <th scope="col" class="action-column" data-i18n="groups.actions">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="group-server-rows"></tbody>
+                </table>
+                <div id="group-server-empty" class="empty-state">
+                  <span class="empty-state-icon" aria-hidden="true">◇</span>
+                  <strong data-i18n="groups.emptyTitle">暂无群服映射</strong>
+                  <p data-i18n="groups.emptyBody">未配置的群将遵循“未配置群使用默认服”设置。</p>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-card card-runtime">
+              <legend>
+                <span class="section-number" aria-hidden="true">04</span>
+                <span data-i18n="sections.runtime.title">查询与缓存</span>
+              </legend>
+              <p class="section-description" data-i18n="sections.runtime.description">
+                平衡服务器查询频率、图片生成速度和 AstrBot 资源占用。
+              </p>
+              <div class="field-grid field-grid-two">
+                <div class="field">
+                  <label for="query_interval_seconds" data-i18n="fields.query_interval_seconds.label">后台采样间隔</label>
+                  <div class="input-with-unit">
+                    <input id="query_interval_seconds" name="query_interval_seconds" type="number" min="30" max="86400" step="1" required />
+                    <span data-i18n="units.seconds">秒</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="max_parallel_queries" data-i18n="fields.max_parallel_queries.label">最大并行查询</label>
+                  <input id="max_parallel_queries" name="max_parallel_queries" type="number" min="1" max="32" step="1" required />
+                </div>
+                <div class="field">
+                  <label for="timeout_seconds" data-i18n="fields.timeout_seconds.label">服务器查询超时</label>
+                  <div class="input-with-unit">
+                    <input id="timeout_seconds" name="timeout_seconds" type="number" min="0.5" max="30" step="0.1" required />
+                    <span data-i18n="units.seconds">秒</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="render_cache_seconds" data-i18n="fields.render_cache_seconds.label">图片缓存</label>
+                  <div class="input-with-unit">
+                    <input id="render_cache_seconds" name="render_cache_seconds" type="number" min="0" max="86400" step="1" required />
+                    <span data-i18n="units.seconds">秒</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="sample_reuse_seconds" data-i18n="fields.sample_reuse_seconds.label">查询结果复用</label>
+                  <div class="input-with-unit">
+                    <input id="sample_reuse_seconds" name="sample_reuse_seconds" type="number" min="0" max="3600" step="1" required />
+                    <span data-i18n="units.seconds">秒</span>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-card card-background">
+              <legend>
+                <span class="section-number" aria-hidden="true">05</span>
+                <span data-i18n="sections.background.title">图片背景</span>
+              </legend>
+              <p class="section-description" data-i18n="sections.background.description">
+                配置状态图背景及远程图片的安全下载边界。
+              </p>
+              <div class="field-grid field-grid-two">
+                <div class="field field-wide">
+                  <label for="background_image_url" data-i18n="fields.background_image_url.label">背景图片 URL</label>
+                  <input
+                    id="background_image_url"
+                    name="background_image_url"
+                    type="url"
+                    maxlength="2048"
+                    inputmode="url"
+                    spellcheck="false"
+                    placeholder="https://example.com/background.png"
+                    aria-describedby="background_image_url-help"
+                  />
+                  <p id="background_image_url-help" class="field-help" data-i18n="fields.background_image_url.help">
+                    留空使用内置背景；仅接受解析到公网 IP 的 HTTP(S) 图片。
+                  </p>
+                </div>
+                <div class="field">
+                  <label for="background_opacity" data-i18n="fields.background_opacity.label">背景透明度</label>
+                  <input id="background_opacity" name="background_opacity" type="number" min="0" max="1" step="0.01" required />
+                </div>
+                <div class="field">
+                  <label for="background_overlay_opacity" data-i18n="fields.background_overlay_opacity.label">暗色遮罩强度</label>
+                  <input id="background_overlay_opacity" name="background_overlay_opacity" type="number" min="0" max="1" step="0.01" required />
+                </div>
+                <div class="field">
+                  <label for="background_cache_seconds" data-i18n="fields.background_cache_seconds.label">背景缓存</label>
+                  <div class="input-with-unit">
+                    <input id="background_cache_seconds" name="background_cache_seconds" type="number" min="0" max="604800" step="1" required />
+                    <span data-i18n="units.seconds">秒</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="background_fetch_timeout_seconds" data-i18n="fields.background_fetch_timeout_seconds.label">背景下载超时</label>
+                  <div class="input-with-unit">
+                    <input id="background_fetch_timeout_seconds" name="background_fetch_timeout_seconds" type="number" min="0.2" max="30" step="0.1" required />
+                    <span data-i18n="units.seconds">秒</span>
+                  </div>
+                </div>
+                <div class="field field-wide">
+                  <label for="background_max_bytes" data-i18n="fields.background_max_bytes.label">背景文件上限</label>
+                  <div class="input-with-unit">
+                    <input id="background_max_bytes" name="background_max_bytes" type="number" min="131072" max="33554432" step="1" required />
+                    <span data-i18n="units.bytes">字节</span>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-card card-history">
+              <legend>
+                <span class="section-number" aria-hidden="true">06</span>
+                <span data-i18n="sections.history.title">图表与历史</span>
+              </legend>
+              <p class="section-description" data-i18n="sections.history.description">
+                控制状态图展示窗口、SQLite 历史保留时间及曲线密度。
+              </p>
+              <div class="field-grid field-grid-three">
+                <div class="field">
+                  <label for="chart_hours" data-i18n="fields.chart_hours.label">图表时间窗</label>
+                  <div class="input-with-unit">
+                    <input id="chart_hours" name="chart_hours" type="number" min="1" max="720" step="1" required />
+                    <span data-i18n="units.hours">小时</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="retention_days" data-i18n="fields.retention_days.label">历史保留</label>
+                  <div class="input-with-unit">
+                    <input id="retention_days" name="retention_days" type="number" min="1" max="3650" step="1" required />
+                    <span data-i18n="units.days">天</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="max_chart_points" data-i18n="fields.max_chart_points.label">最大曲线点数</label>
+                  <input id="max_chart_points" name="max_chart_points" type="number" min="20" max="2000" step="1" required />
+                </div>
+              </div>
+            </fieldset>
+          </div>
+        </fieldset>
+
+        <footer class="action-bar">
+          <div id="save-status" class="save-status" role="status" aria-live="polite"></div>
+          <div class="action-buttons">
+            <button id="reload-settings" class="button button-secondary" type="button" disabled>
+              <span class="button-icon" aria-hidden="true">↻</span>
+              <span data-i18n="actions.reload">重新读取</span>
+            </button>
+            <button id="save-settings" class="button button-primary" type="submit" disabled>
+              <span class="button-icon" aria-hidden="true">✓</span>
+              <span data-i18n="actions.save">保存设置</span>
+            </button>
+          </div>
+        </footer>
+      </form>
+    </main>
+
+    <template id="group-server-row-template">
+      <tr>
+        <td data-column="scope">
+          <label class="sr-only group-field-label"></label>
+          <input class="group-scope" type="text" maxlength="255" required spellcheck="false" autocomplete="off" />
+        </td>
+        <td data-column="address">
+          <label class="sr-only group-field-label"></label>
+          <input class="group-address" type="text" maxlength="512" required spellcheck="false" autocomplete="off" />
+        </td>
+        <td data-column="name">
+          <label class="sr-only group-field-label"></label>
+          <input class="group-name" type="text" maxlength="128" autocomplete="off" />
+        </td>
+        <td data-column="actions" class="action-column">
+          <button class="remove-group button-icon-only" type="button">
+            <span aria-hidden="true">×</span>
+          </button>
+        </td>
+      </tr>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

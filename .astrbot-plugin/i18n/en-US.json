@@ -1,0 +1,174 @@
+{
+  "pages": {
+    "settings": {
+      "title": "settings",
+      "description": "Manage SimpMC-Motd settings and group server mappings in the AstrBot console.",
+      "documentTitle": "SimpMC-Motd settings",
+      "subtitle": "Manage MOTD queries, group server mappings, and status images from the AstrBot console.",
+      "accessibility": {
+        "skip": "Skip to settings form"
+      },
+      "notice": {
+        "title": "Console-only configuration",
+        "body": "MOTD settings can only be changed on this AstrBot WebUI page. Chat commands cannot change or clear settings.",
+        "triggersLabel": "MOTD message triggers",
+        "triggerPrefix": "Message triggers"
+      },
+      "form": {
+        "legend": "SimpMC-Motd settings"
+      },
+      "sections": {
+        "server": {
+          "title": "Default server",
+          "description": "Sessions without their own mapping use this Minecraft Java server."
+        },
+        "access": {
+          "title": "Session access",
+          "description": "Choose which sessions may generate images. All settings remain console-only."
+        },
+        "groups": {
+          "title": "Group servers",
+          "description": "Bind individual platform group sessions to different servers. Changes apply after saving."
+        },
+        "runtime": {
+          "title": "Queries and cache",
+          "description": "Balance query frequency, image generation speed, and AstrBot resource usage."
+        },
+        "background": {
+          "title": "Image background",
+          "description": "Configure the status image background and safe remote-download limits."
+        },
+        "history": {
+          "title": "Charts and history",
+          "description": "Control the chart window, SQLite retention period, and plotted point count."
+        }
+      },
+      "fields": {
+        "server_name": {
+          "label": "Display name",
+          "help": "The server name shown at the top of the status image."
+        },
+        "host": {
+          "label": "Server host",
+          "help": "Enter a hostname or IP only; configure the port separately."
+        },
+        "port": {
+          "label": "Port"
+        },
+        "protocol_version": {
+          "label": "Protocol version",
+          "help": "Used only for the status handshake. The default is normally suitable."
+        },
+        "send_latency_ping": {
+          "label": "Send latency ping",
+          "help": "Send an additional Minecraft latency ping after the status query."
+        },
+        "allow_private_chat": {
+          "label": "Allow private queries",
+          "help": "Generate an image when motd or /motd is sent in a private chat."
+        },
+        "use_default_server_for_unconfigured_groups": {
+          "label": "Use default for unmapped groups",
+          "help": "When off, each group must have a server mapping below."
+        },
+        "enable_group_whitelist": {
+          "label": "Enable group allowlist",
+          "help": "Only groups in the allowlist or group server mappings may query."
+        },
+        "group_whitelist": {
+          "label": "Group allowlist",
+          "help": "Separate entries with commas, spaces, or new lines. Use a platform prefix for exact isolation."
+        },
+        "query_interval_seconds": {
+          "label": "Background sample interval"
+        },
+        "max_parallel_queries": {
+          "label": "Maximum parallel queries"
+        },
+        "timeout_seconds": {
+          "label": "Server query timeout"
+        },
+        "render_cache_seconds": {
+          "label": "Image cache"
+        },
+        "sample_reuse_seconds": {
+          "label": "Query result reuse"
+        },
+        "background_image_url": {
+          "label": "Background image URL",
+          "help": "Leave empty for the built-in background. Only HTTP(S) images resolving to public IPs are accepted."
+        },
+        "background_opacity": {
+          "label": "Background opacity"
+        },
+        "background_overlay_opacity": {
+          "label": "Dark overlay strength"
+        },
+        "background_cache_seconds": {
+          "label": "Background cache"
+        },
+        "background_fetch_timeout_seconds": {
+          "label": "Background fetch timeout"
+        },
+        "background_max_bytes": {
+          "label": "Background size limit"
+        },
+        "chart_hours": {
+          "label": "Chart time window"
+        },
+        "retention_days": {
+          "label": "History retention"
+        },
+        "max_chart_points": {
+          "label": "Maximum chart points"
+        }
+      },
+      "groups": {
+        "add": "Add mapping",
+        "caption": "Group sessions and Minecraft server mappings",
+        "scope": "Session scope",
+        "address": "Server address",
+        "name": "Display name",
+        "actions": "Actions",
+        "emptyTitle": "No group server mappings",
+        "emptyBody": "Unmapped groups follow the default-server setting above.",
+        "namePlaceholder": "Optional display name",
+        "remove": "Remove",
+        "removeAria": "Remove group server mapping {index}"
+      },
+      "units": {
+        "seconds": "sec",
+        "bytes": "bytes",
+        "hours": "hours",
+        "days": "days"
+      },
+      "actions": {
+        "reload": "Reload",
+        "save": "Save settings"
+      },
+      "status": {
+        "connecting": "Connecting",
+        "loading": "Loading settings",
+        "loadingDetail": "Reading the current settings from the plugin backend…",
+        "connected": "Connected",
+        "connectionFailed": "Connection failed",
+        "loaded": "Settings loaded.",
+        "unsaved": "You have unsaved changes.",
+        "saving": "Saving settings…",
+        "savingShort": "Saving",
+        "saved": "Settings saved and applied.",
+        "savedNeedsReload": "Settings were saved, but the plugin must be reloaded before they fully apply.",
+        "saveFailed": "Save failed"
+      },
+      "errors": {
+        "invalidSettings": "The server returned invalid settings data.",
+        "invalidResponse": "The server returned an unrecognized response.",
+        "requestFailed": "The request could not be completed.",
+        "duplicateScope": "Session scopes must be unique.",
+        "invalidField": "The value of “{field}” is invalid.",
+        "unknown": "An unknown error occurred. Check the AstrBot console log.",
+        "fixFields": "Correct the highlighted settings before saving."
+      }
+    }
+  }
+}

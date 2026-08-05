@@ -1,5 +1,8 @@
 name: simpmc_motd
-desc: Periodically fetch a local Minecraft Java server MOTD, keep online-player history, and render a status image.
-version: v1.3.8
-author: Codex
+display_name: SimpMC-Motd
+desc: Configure Minecraft Java MOTD targets in an AstrBot settings page and render status history cards on motd.
+short_desc: Console-managed Minecraft Java MOTD and player-history cards.
+version: v2.0.0
+author: Minecraft0122
 repo: "https://github.com/Minecraft0122/SimpMC-Motd"
+astrbot_version: ">=4.27.0"

@@ -1,0 +1,174 @@
+{
+  "pages": {
+    "settings": {
+      "title": "settings",
+      "description": "在 AstrBot 控制台中管理 SimpMC-Motd 配置与群服映射。",
+      "documentTitle": "SimpMC-Motd 设置",
+      "subtitle": "在 AstrBot 控制台中集中管理 MOTD 查询、群服映射与状态图片。",
+      "accessibility": {
+        "skip": "跳到设置表单"
+      },
+      "notice": {
+        "title": "仅限控制台配置",
+        "body": "MOTD 设置只能在此 AstrBot WebUI 页面修改，群聊中不提供设置或清除指令。",
+        "triggersLabel": "MOTD 触发词",
+        "triggerPrefix": "消息触发"
+      },
+      "form": {
+        "legend": "SimpMC-Motd 设置"
+      },
+      "sections": {
+        "server": {
+          "title": "默认服务器",
+          "description": "未单独映射的会话将使用这里的 Minecraft Java 服务器。"
+        },
+        "access": {
+          "title": "会话权限",
+          "description": "控制哪些会话可以触发图片生成；所有设置仍只能由控制台修改。"
+        },
+        "groups": {
+          "title": "群服映射",
+          "description": "为指定平台群会话绑定独立服务器。修改仅在保存后生效。"
+        },
+        "runtime": {
+          "title": "查询与缓存",
+          "description": "平衡服务器查询频率、图片生成速度和 AstrBot 资源占用。"
+        },
+        "background": {
+          "title": "图片背景",
+          "description": "配置状态图背景及远程图片的安全下载边界。"
+        },
+        "history": {
+          "title": "图表与历史",
+          "description": "控制状态图展示窗口、SQLite 历史保留时间及曲线密度。"
+        }
+      },
+      "fields": {
+        "server_name": {
+          "label": "显示名称",
+          "help": "显示在状态图片顶部的服务器名称。"
+        },
+        "host": {
+          "label": "服务器地址",
+          "help": "仅填写主机名或 IP，端口在右侧单独设置。"
+        },
+        "port": {
+          "label": "端口"
+        },
+        "protocol_version": {
+          "label": "协议版本",
+          "help": "仅用于状态握手，通常保持默认值即可。"
+        },
+        "send_latency_ping": {
+          "label": "发送延迟 Ping",
+          "help": "状态查询后额外发送 latency ping 包。"
+        },
+        "allow_private_chat": {
+          "label": "允许私聊查询",
+          "help": "私聊发送 motd 或 /motd 时生成图片。"
+        },
+        "use_default_server_for_unconfigured_groups": {
+          "label": "未配置群使用默认服",
+          "help": "关闭后，群必须在下方建立服务器映射。"
+        },
+        "enable_group_whitelist": {
+          "label": "启用群白名单",
+          "help": "只允许白名单或群服映射中出现的群查询。"
+        },
+        "group_whitelist": {
+          "label": "群白名单",
+          "help": "支持逗号、空格或换行分隔；平台前缀可用于精确隔离。"
+        },
+        "query_interval_seconds": {
+          "label": "后台采样间隔"
+        },
+        "max_parallel_queries": {
+          "label": "最大并行查询"
+        },
+        "timeout_seconds": {
+          "label": "服务器查询超时"
+        },
+        "render_cache_seconds": {
+          "label": "图片缓存"
+        },
+        "sample_reuse_seconds": {
+          "label": "查询结果复用"
+        },
+        "background_image_url": {
+          "label": "背景图片 URL",
+          "help": "留空使用内置背景；仅接受解析到公网 IP 的 HTTP(S) 图片。"
+        },
+        "background_opacity": {
+          "label": "背景透明度"
+        },
+        "background_overlay_opacity": {
+          "label": "暗色遮罩强度"
+        },
+        "background_cache_seconds": {
+          "label": "背景缓存"
+        },
+        "background_fetch_timeout_seconds": {
+          "label": "背景下载超时"
+        },
+        "background_max_bytes": {
+          "label": "背景文件上限"
+        },
+        "chart_hours": {
+          "label": "图表时间窗"
+        },
+        "retention_days": {
+          "label": "历史保留"
+        },
+        "max_chart_points": {
+          "label": "最大曲线点数"
+        }
+      },
+      "groups": {
+        "add": "添加映射",
+        "caption": "群会话与 Minecraft 服务器映射",
+        "scope": "会话范围",
+        "address": "服务器地址",
+        "name": "显示名称",
+        "actions": "操作",
+        "emptyTitle": "暂无群服映射",
+        "emptyBody": "未配置的群将遵循“未配置群使用默认服”设置。",
+        "namePlaceholder": "可选显示名称",
+        "remove": "删除",
+        "removeAria": "删除第 {index} 条群服映射"
+      },
+      "units": {
+        "seconds": "秒",
+        "bytes": "字节",
+        "hours": "小时",
+        "days": "天"
+      },
+      "actions": {
+        "reload": "重新读取",
+        "save": "保存设置"
+      },
+      "status": {
+        "connecting": "正在连接",
+        "loading": "正在读取设置",
+        "loadingDetail": "正在从插件后端读取当前设置…",
+        "connected": "已连接",
+        "connectionFailed": "连接失败",
+        "loaded": "设置已载入。",
+        "unsaved": "有尚未保存的更改。",
+        "saving": "正在保存设置…",
+        "savingShort": "正在保存",
+        "saved": "设置已保存并立即生效。",
+        "savedNeedsReload": "设置已保存，但需要重载插件后才能完全生效。",
+        "saveFailed": "保存失败"
+      },
+      "errors": {
+        "invalidSettings": "服务器返回了无效的设置数据。",
+        "invalidResponse": "服务器返回了无法识别的响应。",
+        "requestFailed": "请求未能完成。",
+        "duplicateScope": "会话范围不能重复。",
+        "invalidField": "“{field}”的值无效。",
+        "unknown": "发生未知错误，请检查 AstrBot 控制台日志。",
+        "fixFields": "请先修正标记出的配置项。"
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 __pycache__/
 *.py[cod]
 *.sqlite3
+.ruff_cache/
 data/
 .env
