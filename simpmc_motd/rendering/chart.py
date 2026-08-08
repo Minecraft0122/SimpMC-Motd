@@ -18,6 +18,21 @@ def _player_count(value: Any) -> int:
         return 0
 
 
+def _row_value(row: Mapping[str, Any], key: str, default: Any = None) -> Any:
+    try:
+        return row[key]
+    except (KeyError, IndexError, TypeError):
+        return default
+
+
+def _row_timestamp(row: Mapping[str, Any]) -> float | None:
+    try:
+        timestamp = float(_row_value(row, "sampled_at"))
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return timestamp if math.isfinite(timestamp) else None
+
+
 def downsample_rows(rows: Sequence[RowT], limit: int) -> list[RowT]:
     if limit <= 0 or len(rows) <= limit:
         return list(rows)
@@ -26,6 +41,37 @@ def downsample_rows(rows: Sequence[RowT], limit: int) -> list[RowT]:
     if rows[-1] not in picked:
         picked[-1] = rows[-1]
     return picked
+
+
+def _downsample_observations(
+    rows: Sequence[RowT],
+    limit: int,
+    latency_warning_ms: int,
+) -> list[RowT]:
+    if limit <= 0 or len(rows) <= limit:
+        return list(rows)
+
+    required_indices = {0, len(rows) - 1}
+    for index, row in enumerate(rows):
+        if not bool(_row_value(row, "success")):
+            required_indices.add(index)
+            continue
+        try:
+            latency = int(_row_value(row, "latency_ms"))
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if latency > latency_warning_ms:
+            required_indices.add(index)
+
+    if len(required_indices) >= limit:
+        ordered = sorted(required_indices)
+        return [rows[index] for index in downsample_rows(ordered, limit)]
+
+    ordinary_indices = [index for index in range(len(rows)) if index not in required_indices]
+    selected_indices = required_indices | set(
+        downsample_rows(ordinary_indices, limit - len(required_indices))
+    )
+    return [rows[index] for index in sorted(selected_indices)]
 
 
 def build_y_ticks(
@@ -55,12 +101,37 @@ def build_chart(
     max_points: int,
     start_ts: float,
     end_ts: float,
+    latency_warning_ms: int = 200,
 ) -> dict[str, Any]:
-    successful = [row for row in rows if row["success"] and row["online"] is not None]
-    sampled = downsample_rows(successful, max(20, max_points))
-    online_values = [_player_count(row["online"]) for row in successful]
+    try:
+        threshold = max(0, int(latency_warning_ms))
+    except (TypeError, ValueError, OverflowError):
+        threshold = 200
+    observations = [row for row in rows if _row_timestamp(row) is not None]
+    current_timestamp = _row_timestamp({"sampled_at": current.sampled_at})
+    has_current_failure = current_timestamp is not None and any(
+        not bool(_row_value(row, "success")) and _row_timestamp(row) == current_timestamp
+        for row in observations
+    )
+    if not current.ok and current_timestamp is not None and not has_current_failure:
+        observations.append(
+            {
+                "sampled_at": current.sampled_at,
+                "success": 0,
+                "online": None,
+                "latency_ms": current.latency_ms,
+            }
+        )
+    observations.sort(key=lambda row: float(_row_value(row, "sampled_at")))
+    successful = [
+        row
+        for row in observations
+        if bool(_row_value(row, "success")) and _row_value(row, "online") is not None
+    ]
+    sampled = _downsample_observations(observations, max(20, max_points), threshold)
+    online_values = [_player_count(_row_value(row, "online")) for row in successful]
     peak_online = max(online_values) if online_values else 0
-    y_max = max(1, math.ceil(max(peak_online, 1) * 1.2))
+    y_max = max(1, peak_online)
 
     plot_left = 38
     plot_right = 742
@@ -72,25 +143,75 @@ def build_chart(
 
     line_points = ""
     area_points = ""
+    line_segments: list[dict[str, str]] = []
     point_markers: list[dict[str, str]] = []
+    offline_bars: list[dict[str, str]] = []
+    latency_markers: list[dict[str, str]] = []
     if sampled:
-        points: list[str] = []
-        marker_values: list[tuple[float, float]] = []
+        successful_runs: list[list[tuple[float, float]]] = []
+        current_run: list[tuple[float, float]] = []
+        x_values: list[float] = []
         for row in sampled:
-            x = plot_left + (float(row["sampled_at"]) - start_ts) / span * width
+            x = plot_left + (float(_row_value(row, "sampled_at")) - start_ts) / span * width
             x = min(plot_right, max(plot_left, x))
-            online = _player_count(row["online"])
+            x_values.append(x)
+        for index, row in enumerate(sampled):
+            x = x_values[index]
+            if not bool(_row_value(row, "success")):
+                if current_run:
+                    successful_runs.append(current_run)
+                    current_run = []
+                neighbors = [
+                    abs(x_values[neighbor] - x)
+                    for neighbor in (index - 1, index + 1)
+                    if 0 <= neighbor < len(x_values) and x_values[neighbor] != x
+                ]
+                spacing = min(neighbors) if neighbors else 10.0
+                bar_width = max(3.0, min(18.0, spacing * 0.65))
+                bar_x = max(plot_left, min(plot_right - bar_width, x - bar_width / 2))
+                offline_bars.append(
+                    {
+                        "x": f"{bar_x:.1f}",
+                        "y": str(plot_top),
+                        "width": f"{bar_width:.1f}",
+                        "height": str(height),
+                    }
+                )
+                continue
+            if _row_value(row, "online") is None:
+                if current_run:
+                    successful_runs.append(current_run)
+                    current_run = []
+                continue
+            online = _player_count(_row_value(row, "online"))
             y = plot_bottom - (online / y_max) * height
-            points.append(f"{x:.1f},{y:.1f}")
-            marker_values.append((x, y))
-        line_points = " ".join(points)
-        if len(points) > 1:
-            first_x = points[0].split(",")[0]
-            last_x = points[-1].split(",")[0]
-            area_points = f"{first_x},{plot_bottom} {line_points} {last_x},{plot_bottom}"
-        else:
-            x, y = marker_values[0]
-            point_markers.append({"x": f"{x:.1f}", "y": f"{y:.1f}"})
+            current_run.append((x, y))
+            try:
+                latency = int(_row_value(row, "latency_ms"))
+            except (TypeError, ValueError, OverflowError):
+                latency = None
+            if latency is not None and latency > threshold:
+                latency_markers.append({"x": f"{x:.1f}", "y": f"{y:.1f}"})
+        if current_run:
+            successful_runs.append(current_run)
+
+        for run in successful_runs:
+            if len(run) == 1:
+                x, y = run[0]
+                point_markers.append({"x": f"{x:.1f}", "y": f"{y:.1f}"})
+                continue
+            run_points = " ".join(f"{x:.1f},{y:.1f}" for x, y in run)
+            first_x = f"{run[0][0]:.1f}"
+            last_x = f"{run[-1][0]:.1f}"
+            line_segments.append(
+                {
+                    "line_points": run_points,
+                    "area_points": (f"{first_x},{plot_bottom} {run_points} {last_x},{plot_bottom}"),
+                }
+            )
+        if len(line_segments) == 1 and not point_markers:
+            line_points = line_segments[0]["line_points"]
+            area_points = line_segments[0]["area_points"]
 
     if not current.ok:
         chart_status = "error"
@@ -117,7 +238,10 @@ def build_chart(
     return {
         "line_points": line_points,
         "area_points": area_points,
+        "line_segments": line_segments,
         "point_markers": point_markers,
+        "offline_bars": offline_bars,
+        "latency_markers": latency_markers,
         "y_max": y_max,
         "y_ticks": build_y_ticks(y_max, plot_top, plot_bottom),
         "peak_online": peak_online,
@@ -127,6 +251,7 @@ def build_chart(
         "chart_fill_opacity": chart_fill_opacity,
         "chart_axis_color": chart_axis_color,
         "chart_tick_color": chart_tick_color,
+        "line_color": "#58f15f" if successful else chart_color,
         "empty_text": empty_text,
     }
 

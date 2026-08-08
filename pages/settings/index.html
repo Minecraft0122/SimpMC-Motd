@@ -104,35 +104,7 @@
                   <label for="port" data-i18n="fields.port.label">端口</label>
                   <input id="port" name="port" type="number" min="1" max="65535" step="1" required />
                 </div>
-
-                <div class="field">
-                  <label for="protocol_version" data-i18n="fields.protocol_version.label">协议版本</label>
-                  <input
-                    id="protocol_version"
-                    name="protocol_version"
-                    type="number"
-                    min="1"
-                    max="2147483647"
-                    step="1"
-                    required
-                    aria-describedby="protocol_version-help"
-                  />
-                  <p id="protocol_version-help" class="field-help" data-i18n="fields.protocol_version.help">
-                    仅用于状态握手，通常保持默认值即可。
-                  </p>
-                </div>
               </div>
-
-              <label class="toggle-row" for="send_latency_ping">
-                <span>
-                  <strong data-i18n="fields.send_latency_ping.label">发送延迟 Ping</strong>
-                  <small data-i18n="fields.send_latency_ping.help">状态查询后额外发送 latency ping 包。</small>
-                </span>
-                <span class="switch">
-                  <input id="send_latency_ping" name="send_latency_ping" type="checkbox" />
-                  <span class="switch-track" aria-hidden="true"></span>
-                </span>
-              </label>
             </fieldset>
 
             <fieldset class="settings-card card-access">
@@ -344,7 +316,7 @@
               <p class="section-description" data-i18n="sections.history.description">
                 控制状态图展示窗口、SQLite 历史保留时间及曲线密度。
               </p>
-              <div class="field-grid field-grid-three">
+              <div class="field-grid field-grid-two">
                 <div class="field">
                   <label for="chart_hours" data-i18n="fields.chart_hours.label">图表时间窗</label>
                   <div class="input-with-unit">
@@ -362,6 +334,16 @@
                 <div class="field">
                   <label for="max_chart_points" data-i18n="fields.max_chart_points.label">最大曲线点数</label>
                   <input id="max_chart_points" name="max_chart_points" type="number" min="20" max="2000" step="1" required />
+                </div>
+                <div class="field">
+                  <label for="latency_warning_ms" data-i18n="fields.latency_warning_ms.label">高延迟阈值</label>
+                  <div class="input-with-unit">
+                    <input id="latency_warning_ms" name="latency_warning_ms" type="number" min="0" max="60000" step="1" required aria-describedby="latency_warning_ms-help" />
+                    <span data-i18n="units.milliseconds">毫秒</span>
+                  </div>
+                  <p id="latency_warning_ms-help" class="field-help" data-i18n="fields.latency_warning_ms.help">
+                    成功采样的延迟高于此值时显示黄色点；连接失败始终显示红色条。
+                  </p>
                 </div>
               </div>
             </fieldset>

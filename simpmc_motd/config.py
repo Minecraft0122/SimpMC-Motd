@@ -15,8 +15,6 @@ DEFAULTS: Final[Mapping[str, Any]] = MappingProxyType(
         "server_name": "Minecraft Server",
         "host": "127.0.0.1",
         "port": 25565,
-        "protocol_version": 760,
-        "send_latency_ping": False,
         "query_interval_seconds": 300,
         "max_parallel_queries": 4,
         "render_cache_seconds": 45,
@@ -36,6 +34,7 @@ DEFAULTS: Final[Mapping[str, Any]] = MappingProxyType(
         "chart_hours": 24,
         "retention_days": 30,
         "max_chart_points": 180,
+        "latency_warning_ms": 200,
     }
 )
 
@@ -255,14 +254,6 @@ class ConfigView:
         return self._integer("port", minimum=1, maximum=65535)
 
     @property
-    def protocol_version(self) -> int:
-        return self._integer("protocol_version", minimum=1, maximum=2_147_483_647)
-
-    @property
-    def send_latency_ping(self) -> bool:
-        return self._boolean("send_latency_ping")
-
-    @property
     def query_interval_seconds(self) -> int:
         return self._integer("query_interval_seconds", minimum=30, maximum=86_400)
 
@@ -362,6 +353,10 @@ class ConfigView:
     @property
     def max_chart_points(self) -> int:
         return self._integer("max_chart_points", minimum=20, maximum=2000)
+
+    @property
+    def latency_warning_ms(self) -> int:
+        return self._integer("latency_warning_ms", minimum=0, maximum=60_000)
 
     @property
     def whitelist_entries(self) -> frozenset[str]:
@@ -479,8 +474,6 @@ class ConfigView:
             "server_name": self.server_name,
             "host": self.host,
             "port": self.port,
-            "protocol_version": self.protocol_version,
-            "send_latency_ping": self.send_latency_ping,
             "query_interval_seconds": self.query_interval_seconds,
             "max_parallel_queries": self.max_parallel_queries,
             "render_cache_seconds": self.render_cache_seconds,
@@ -502,6 +495,7 @@ class ConfigView:
             "chart_hours": self.chart_hours,
             "retention_days": self.retention_days,
             "max_chart_points": self.max_chart_points,
+            "latency_warning_ms": self.latency_warning_ms,
         }
 
 

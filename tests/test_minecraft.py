@@ -14,7 +14,10 @@ from simpmc_motd.constants import (
     MAX_PLAYER_COUNT,
     MAX_STATUS_PACKET_BYTES,
 )
-from simpmc_motd.minecraft.client import query_minecraft_status
+from simpmc_motd.minecraft.client import (
+    STATUS_PROTOCOL_VERSION,
+    query_minecraft_status,
+)
 from simpmc_motd.minecraft.codec import (
     pack_packet,
     pack_string,
@@ -265,7 +268,7 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
         server.close()
         await server.wait_closed()
 
-    async def test_status_round_trip_and_handshake_without_latency_ping(self) -> None:
+    async def test_status_round_trip_uses_generic_handshake_and_latency_ping(self) -> None:
         favicon = fallback_background_data_uri(64, 64)
         response = {
             "players": {
@@ -287,8 +290,6 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "127.0.0.1",
             port,
             timeout=1.0,
-            protocol_version=772,
-            send_latency_ping=False,
         )
         await asyncio.wait_for(done.wait(), timeout=1.0)
 
@@ -302,22 +303,26 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
             {"description": response["description"], "favicon": favicon},
             status.raw_json,
         )
-        self.assertIsNone(status.latency_ms)
+        self.assertIsInstance(status.latency_ms, int)
+        self.assertGreaterEqual(status.latency_ms or 0, 0)
         self.assertEqual(0, captured["handshake_id"])
-        self.assertEqual(772, captured["protocol"])
+        self.assertEqual(STATUS_PROTOCOL_VERSION, captured["protocol"])
         self.assertEqual("127.0.0.1", captured["host"])
         self.assertEqual(port, captured["port"])
         self.assertEqual(1, captured["next_state"])
         self.assertEqual(captured["handshake_size"], captured["handshake_end"])
         self.assertEqual(0, captured["request_id"])
         self.assertEqual(b"", captured["request_payload"])
-        self.assertIsNone(captured["extra_packet"])
+        self.assertIsNotNone(captured["extra_packet"])
+        ping_id, ping_payload = captured["extra_packet"]
+        self.assertEqual(1, ping_id)
+        self.assertEqual(8, len(ping_payload))
         self.assertNotIn("server_error", captured)
 
-    async def test_optional_latency_ping_is_sent_and_pong_is_accepted(self) -> None:
+    async def test_latency_ping_is_sent_and_pong_is_accepted(self) -> None:
         response = {
             "players": {"online": "4", "max": "12"},
-            "version": {"name": "test", "protocol": "760"},
+            "version": {"name": "test", "protocol": "772"},
             "description": "ready",
         }
         _, port, captured, done = await self._start_status_server(response, ping_mode="pong")
@@ -326,14 +331,13 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "127.0.0.1",
             port,
             timeout=1.0,
-            protocol_version=760,
-            send_latency_ping=True,
         )
         await asyncio.wait_for(done.wait(), timeout=1.0)
 
         self.assertTrue(status.ok, status.error)
         self.assertEqual(1, captured["ping_id"])
         self.assertEqual(8, len(captured["ping_payload"]))
+        self.assertEqual(STATUS_PROTOCOL_VERSION, captured["protocol"])
         self.assertIsInstance(status.latency_ms, int)
         self.assertGreaterEqual(status.latency_ms or 0, 0)
         self.assertNotIn("server_error", captured)
@@ -341,7 +345,7 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_escaped_lone_surrogates_are_safe_to_render_and_persist(self) -> None:
         response = {
             "players": {"online": 1, "max": 20},
-            "version": {"name": "broken-\ud800", "protocol": 760},
+            "version": {"name": "broken-\ud800", "protocol": 772},
             "description": {"text": "hello-\ud800"},
         }
         _, port, captured, done = await self._start_status_server(response)
@@ -349,7 +353,6 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "127.0.0.1",
             port,
             timeout=1.0,
-            protocol_version=760,
         )
         await asyncio.wait_for(done.wait(), timeout=1.0)
 
@@ -383,8 +386,6 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "127.0.0.1",
             port,
             timeout=1.0,
-            protocol_version=760,
-            send_latency_ping=True,
         )
         await asyncio.wait_for(done.wait(), timeout=1.0)
 
@@ -413,7 +414,6 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     "127.0.0.1",
                     port,
                     timeout=1.0,
-                    protocol_version=760,
                 )
                 await asyncio.wait_for(done.wait(), timeout=1.0)
                 self.assertFalse(status.ok)
@@ -426,7 +426,6 @@ class MinecraftClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "127.0.0.1",
             port,
             timeout=0.1,
-            protocol_version=760,
         )
         await asyncio.wait_for(done.wait(), timeout=1.0)
 

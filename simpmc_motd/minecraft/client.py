@@ -15,6 +15,7 @@ from .codec import pack_packet, pack_string, pack_varint, parse_string_from, rea
 from .components import clean_motd, safe_favicon, sanitize_component
 
 T = TypeVar("T")
+STATUS_PROTOCOL_VERSION = 47
 
 
 def _non_negative_int(
@@ -32,8 +33,6 @@ async def query_minecraft_status(
     host: str,
     port: int,
     timeout: float,
-    protocol_version: int,
-    send_latency_ping: bool = False,
 ) -> MinecraftStatus:
     sampled_at = time.time()
     started = time.perf_counter()
@@ -52,12 +51,15 @@ async def query_minecraft_status(
     try:
         reader, writer = await wait_until_deadline(asyncio.open_connection(host, port))
         handshake = (
-            pack_varint(protocol_version)
+            pack_varint(STATUS_PROTOCOL_VERSION)
             + pack_string(host)
             + struct.pack(">H", port)
             + pack_varint(1)
         )
         writer.write(pack_packet(0, handshake))
+        await wait_until_deadline(writer.drain())
+
+        status_started = time.perf_counter()
         writer.write(pack_packet(0))
         await wait_until_deadline(writer.drain())
 
@@ -71,25 +73,21 @@ async def query_minecraft_status(
         if not isinstance(status_json, dict):
             raise ValueError("Minecraft status 响应必须是 JSON 对象")
 
-        latency_ms: int | None = None
-        if send_latency_ping:
-            try:
-                ping_started = time.perf_counter()
-                nonce = int(time.time() * 1000)
-                writer.write(pack_packet(1, struct.pack(">q", nonce)))
-                await wait_until_deadline(writer.drain())
-                pong_id, pong_payload = await wait_until_deadline(read_packet(reader))
-                if (
-                    pong_id == 1
-                    and len(pong_payload) == 8
-                    and struct.unpack(">q", pong_payload)[0] == nonce
-                ):
-                    latency_ms = max(
-                        0,
-                        round((time.perf_counter() - ping_started) * 1000),
-                    )
-            except Exception:
-                latency_ms = max(0, round((time.perf_counter() - started) * 1000))
+        latency_ms = max(0, round((time.perf_counter() - status_started) * 1000))
+        try:
+            ping_started = time.perf_counter()
+            nonce = int(time.time() * 1000)
+            writer.write(pack_packet(1, struct.pack(">q", nonce)))
+            await wait_until_deadline(writer.drain())
+            pong_id, pong_payload = await wait_until_deadline(read_packet(reader))
+            if (
+                pong_id == 1
+                and len(pong_payload) == 8
+                and struct.unpack(">q", pong_payload)[0] == nonce
+            ):
+                latency_ms = max(0, round((time.perf_counter() - ping_started) * 1000))
+        except Exception:
+            pass
 
         players = status_json.get("players")
         if not isinstance(players, dict):

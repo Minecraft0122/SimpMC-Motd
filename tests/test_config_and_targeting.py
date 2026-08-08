@@ -20,7 +20,7 @@ from simpmc_motd.web_settings import (
 
 
 class ConfigViewTests(unittest.TestCase):
-    def test_all_24_schema_defaults(self) -> None:
+    def test_all_23_schema_defaults(self) -> None:
         settings = ConfigView({})
         actual = settings.snapshot()
         actual["group_servers_json"] = dict(actual["group_servers_json"])
@@ -29,8 +29,6 @@ class ConfigViewTests(unittest.TestCase):
             "server_name": "Minecraft Server",
             "host": "127.0.0.1",
             "port": 25565,
-            "protocol_version": 760,
-            "send_latency_ping": False,
             "query_interval_seconds": 300,
             "max_parallel_queries": 4,
             "render_cache_seconds": 45,
@@ -50,9 +48,10 @@ class ConfigViewTests(unittest.TestCase):
             "chart_hours": 24,
             "retention_days": 30,
             "max_chart_points": 180,
+            "latency_warning_ms": 200,
         }
 
-        self.assertEqual(24, len(expected))
+        self.assertEqual(23, len(expected))
         self.assertEqual(expected, actual)
 
     def test_values_are_read_dynamically(self) -> None:
@@ -60,7 +59,7 @@ class ConfigViewTests(unittest.TestCase):
             "server_name": "旧名称",
             "host": "old.example",
             "port": "25566",
-            "send_latency_ping": "false",
+            "latency_warning_ms": "350",
             "chart_hours": 12,
         }
         settings = ConfigView(source)
@@ -68,7 +67,7 @@ class ConfigViewTests(unittest.TestCase):
         self.assertEqual("旧名称", settings.server_name)
         self.assertEqual("old.example", settings.host)
         self.assertEqual(25566, settings.port)
-        self.assertFalse(settings.send_latency_ping)
+        self.assertEqual(350, settings.latency_warning_ms)
         self.assertEqual(12, settings.chart_hours)
 
         source.update(
@@ -76,7 +75,7 @@ class ConfigViewTests(unittest.TestCase):
                 "server_name": "新名称",
                 "host": "new.example",
                 "port": 25577,
-                "send_latency_ping": "yes",
+                "latency_warning_ms": 450,
                 "chart_hours": 48,
             }
         )
@@ -84,13 +83,12 @@ class ConfigViewTests(unittest.TestCase):
         self.assertEqual("新名称", settings.server_name)
         self.assertEqual("new.example", settings.host)
         self.assertEqual(25577, settings.port)
-        self.assertTrue(settings.send_latency_ping)
+        self.assertEqual(450, settings.latency_warning_ms)
         self.assertEqual(48, settings.chart_hours)
 
     def test_invalid_and_oversized_values_fall_back_and_warn_once(self) -> None:
         source: dict[str, Any] = {
             "port": 2**100,
-            "protocol_version": 2**100,
             "query_interval_seconds": 86_401,
             "max_parallel_queries": 33,
             "render_cache_seconds": 86_401,
@@ -104,13 +102,12 @@ class ConfigViewTests(unittest.TestCase):
             "chart_hours": 24 * 30 + 1,
             "retention_days": 3_651,
             "max_chart_points": 2_001,
-            "send_latency_ping": "perhaps",
+            "latency_warning_ms": 60_001,
         }
         warnings: list[str] = []
         settings = ConfigView(source, warnings.append)
         expected = {
             "port": 25565,
-            "protocol_version": 760,
             "query_interval_seconds": 300,
             "max_parallel_queries": 4,
             "render_cache_seconds": 45,
@@ -124,7 +121,7 @@ class ConfigViewTests(unittest.TestCase):
             "chart_hours": 24,
             "retention_days": 30,
             "max_chart_points": 180,
-            "send_latency_ping": False,
+            "latency_warning_ms": 200,
         }
 
         for property_name, default in expected.items():

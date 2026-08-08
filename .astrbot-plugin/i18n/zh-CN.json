@@ -55,14 +55,6 @@
         "port": {
           "label": "端口"
         },
-        "protocol_version": {
-          "label": "协议版本",
-          "help": "仅用于状态握手，通常保持默认值即可。"
-        },
-        "send_latency_ping": {
-          "label": "发送延迟 Ping",
-          "help": "状态查询后额外发送 latency ping 包。"
-        },
         "allow_private_chat": {
           "label": "允许私聊查询",
           "help": "私聊发送 motd 或 /motd 时生成图片。"
@@ -121,6 +113,10 @@
         },
         "max_chart_points": {
           "label": "最大曲线点数"
+        },
+        "latency_warning_ms": {
+          "label": "高延迟阈值",
+          "help": "成功采样的延迟高于此值时显示黄色点；连接失败始终显示红色条。"
         }
       },
       "groups": {
@@ -140,7 +136,8 @@
         "seconds": "秒",
         "bytes": "字节",
         "hours": "小时",
-        "days": "天"
+        "days": "天",
+        "milliseconds": "毫秒"
       },
       "actions": {
         "reload": "重新读取",

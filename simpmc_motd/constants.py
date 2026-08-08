@@ -5,7 +5,7 @@ from datetime import timedelta, timezone
 PLUGIN_ID = "simpmc_motd"
 PLUGIN_NAME = "SimpMC-Motd"
 PLUGIN_VERSION = "2.0.0"
-RENDER_CACHE_VERSION = "7"
+RENDER_CACHE_VERSION = "8"
 DISPLAY_TZ = timezone(timedelta(hours=8), "Asia/Shanghai")
 
 MAX_STATUS_PACKET_BYTES = 2 * 1024 * 1024

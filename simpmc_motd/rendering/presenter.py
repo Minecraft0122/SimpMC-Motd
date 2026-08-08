@@ -23,6 +23,9 @@ class PresentationSettings(Protocol):
     def max_chart_points(self) -> int: ...
 
     @property
+    def latency_warning_ms(self) -> int: ...
+
+    @property
     def background_image_url(self) -> str: ...
 
     @property
@@ -59,6 +62,7 @@ class StatusPresenter:
             self._settings.max_chart_points,
             start_ts,
             end_ts,
+            self._settings.latency_warning_ms,
         )
         background = await self._backgrounds.get()
         background_opacity = self._settings.background_opacity
@@ -93,13 +97,17 @@ class StatusPresenter:
                 for key in (
                     "line_points",
                     "area_points",
+                    "line_segments",
                     "point_markers",
                     "y_ticks",
                     "chart_color",
                     "chart_fill_opacity",
                     "chart_axis_color",
                     "chart_tick_color",
+                    "line_color",
                     "empty_text",
+                    "offline_bars",
+                    "latency_markers",
                 )
             },
         }
@@ -114,6 +122,7 @@ class StatusPresenter:
                 target.server_name,
                 str(self._settings.chart_hours),
                 str(self._settings.max_chart_points),
+                str(self._settings.latency_warning_ms),
                 self._settings.background_image_url,
                 f"{self._settings.background_opacity:.2f}",
                 f"{self._settings.background_overlay_opacity:.2f}",

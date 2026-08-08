@@ -18,12 +18,6 @@ class StatusSettings(Protocol):
     def timeout_seconds(self) -> float: ...
 
     @property
-    def protocol_version(self) -> int: ...
-
-    @property
-    def send_latency_ping(self) -> bool: ...
-
-    @property
     def sample_reuse_seconds(self) -> int: ...
 
     @property
@@ -51,7 +45,7 @@ class StatusService:
         self._max_endpoint_cache_entries = 256
 
     def query_key(self, target: ServerTarget) -> str:
-        return f"{target.host.casefold()}|{target.port}|{self._settings.protocol_version}"
+        return f"{target.host.casefold()}|{target.port}"
 
     def _cached_endpoint_status(
         self,
@@ -94,8 +88,6 @@ class StatusService:
                 host=target.host,
                 port=target.port,
                 timeout=self._settings.timeout_seconds,
-                protocol_version=self._settings.protocol_version,
-                send_latency_ping=self._settings.send_latency_ping,
             )
         self._cache_endpoint_status(self.query_key(target), status)
         await self._store.add_sample(target.scope_id, status)

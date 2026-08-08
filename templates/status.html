@@ -190,8 +190,8 @@
       <svg viewBox="0 0 758 350" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <linearGradient id="lineGlow" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="{{ chart_color }}" stop-opacity="{{ chart_fill_opacity }}"/>
-            <stop offset="100%" stop-color="{{ chart_color }}" stop-opacity="0.06"/>
+            <stop offset="0%" stop-color="{{ line_color }}" stop-opacity="{{ chart_fill_opacity }}"/>
+            <stop offset="100%" stop-color="{{ line_color }}" stop-opacity="0.06"/>
           </linearGradient>
         </defs>
         <line x1="38" y1="18" x2="38" y2="296" stroke="{{ chart_axis_color }}" stroke-width="2"/>
@@ -205,20 +205,26 @@
         <text x="{{ tick.x }}" y="335" text-anchor="{{ tick.anchor }}" fill="{{ chart_tick_color }}" font-size="25">{{ tick.time }}</text>
         {% endfor %}
 
-        {% if area_points %}
-        <polygon points="{{ area_points }}" fill="url(#lineGlow)"/>
-        <polyline points="{{ line_points }}" fill="none" stroke="{{ chart_color }}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        {% for marker in point_markers %}
-        <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="4.5" fill="{{ chart_color }}"/>
+        {% if line_segments or point_markers %}
+        {% for segment in line_segments %}
+        <polygon points="{{ segment.area_points }}" fill="url(#lineGlow)"/>
+        <polyline points="{{ segment.line_points }}" fill="none" stroke="{{ line_color }}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
         {% endfor %}
-        {% elif point_markers %}
         {% for marker in point_markers %}
-        <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="5.5" fill="{{ chart_color }}"/>
+        <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="5.5" fill="{{ line_color }}"/>
         {% endfor %}
+        {% if empty_text %}
         <text x="312" y="160" fill="{{ chart_color }}" font-size="22">{{ empty_text }}</text>
+        {% endif %}
         {% else %}
         <text x="312" y="160" fill="{{ chart_color }}" font-size="22">{{ empty_text }}</text>
         {% endif %}
+        {% for bar in offline_bars %}
+        <rect x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}" fill="#ff5f6d" opacity="0.88"/>
+        {% endfor %}
+        {% for marker in latency_markers %}
+        <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="6" fill="#ffd34e" stroke="#fff3b0" stroke-width="2"/>
+        {% endfor %}
       </svg>
       <div class="footer">{{ scope_label }} · {{ current.sampled_at_text }}</div>
     </div>

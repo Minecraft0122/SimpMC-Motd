@@ -5,6 +5,7 @@ import json
 import time
 import unittest
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from simpmc_motd.concurrency import KeyedLocks
@@ -38,23 +39,59 @@ class ChartTests(unittest.TestCase):
         self.assertEqual([0, 3, 9], [row["value"] for row in downsample_rows(rows, 3)])
         self.assertEqual(3, len(downsample_rows(rows, 3)))
 
-    def test_chart_uses_only_successful_rows_and_real_time_positions(self) -> None:
+    def test_chart_marks_offline_rows_and_uses_exact_peak(self) -> None:
         rows = [
-            {"sampled_at": 100.0, "success": 1, "online": 5},
-            {"sampled_at": 200.0, "success": 0, "online": 99},
-            {"sampled_at": 300.0, "success": 1, "online": None},
-            {"sampled_at": 400.0, "success": 1, "online": 10},
+            {"sampled_at": 100.0, "success": 1, "online": 5, "latency_ms": 50},
+            {"sampled_at": 200.0, "success": 0, "online": None, "latency_ms": 999},
+            {"sampled_at": 300.0, "success": 1, "online": 8, "latency_ms": 250},
+            {"sampled_at": 400.0, "success": 1, "online": 10, "latency_ms": 200},
         ]
-        chart = build_chart(rows, self.status(), 180, 100.0, 400.0)
+        chart = build_chart(rows, self.status(), 180, 100.0, 400.0, 200)
         self.assertEqual("ok", chart["chart_status"])
-        self.assertEqual(2, chart["sample_count"])
+        self.assertEqual(3, chart["sample_count"])
         self.assertEqual(10, chart["peak_online"])
-        self.assertEqual(12, chart["y_max"])
-        self.assertTrue(chart["line_points"].startswith("38.0,"))
-        self.assertIn("742.0,", chart["line_points"])
-        self.assertTrue(chart["area_points"].startswith("38.0,296 "))
-        self.assertTrue(chart["area_points"].endswith(" 742.0,296"))
-        self.assertEqual([], chart["point_markers"])
+        self.assertEqual(10, chart["y_max"])
+        self.assertEqual(1, len(chart["offline_bars"]))
+        self.assertEqual(1, len(chart["latency_markers"]))
+        self.assertEqual(1, len(chart["line_segments"]))
+        self.assertTrue(chart["line_segments"][0]["line_points"].startswith("507.3,"))
+        self.assertIn("742.0,", chart["line_segments"][0]["line_points"])
+        self.assertEqual("", chart["line_points"])
+        self.assertEqual("", chart["area_points"])
+        self.assertEqual([{"x": "38.0", "y": "157.0"}], chart["point_markers"])
+
+    def test_latency_threshold_is_strict_and_offline_takes_priority(self) -> None:
+        rows = [
+            {"sampled_at": 100.0, "success": 1, "online": 3, "latency_ms": 200},
+            {"sampled_at": 200.0, "success": 1, "online": 4, "latency_ms": 201},
+            {"sampled_at": 300.0, "success": 0, "online": None, "latency_ms": 999},
+        ]
+
+        chart = build_chart(rows, self.status(), 180, 100.0, 400.0, 200)
+
+        self.assertEqual(1, len(chart["latency_markers"]))
+        self.assertEqual(1, len(chart["offline_bars"]))
+        self.assertEqual("272.7", chart["latency_markers"][0]["x"])
+        self.assertEqual(1, len(chart["line_segments"]))
+        self.assertNotIn("507.3", chart["line_segments"][0]["line_points"])
+
+    def test_downsampling_preserves_offline_and_high_latency_events(self) -> None:
+        rows = [
+            {
+                "sampled_at": float(index),
+                "success": 1,
+                "online": index % 20,
+                "latency_ms": 50,
+            }
+            for index in range(100)
+        ]
+        rows[37].update(success=0, online=None, latency_ms=999)
+        rows[61]["latency_ms"] = 201
+
+        chart = build_chart(rows, self.status(), 20, 0.0, 100.0, 200)
+
+        self.assertEqual(1, len(chart["offline_bars"]))
+        self.assertEqual(1, len(chart["latency_markers"]))
 
     def test_single_point_empty_and_offline_states(self) -> None:
         row = {"sampled_at": 250.0, "success": 1, "online": -4}
@@ -69,6 +106,13 @@ class ChartTests(unittest.TestCase):
         self.assertEqual("error", offline["chart_status"])
         self.assertEqual("#ff5f6d", offline["chart_color"])
         self.assertEqual("服务器连接失败", offline["empty_text"])
+        self.assertEqual(1, len(offline["offline_bars"]))
+
+        invalid_current = self.status(False)
+        invalid_current.sampled_at = float("nan")
+        invalid = build_chart([], invalid_current, 180, 100.0, 400.0)
+        self.assertEqual("error", invalid["chart_status"])
+        self.assertEqual(0, len(invalid["offline_bars"]))
 
     def test_ticks_keep_timezone_and_y_axis_contract(self) -> None:
         ticks = build_x_ticks(0, 4 * 3600)
@@ -89,9 +133,19 @@ class ChartTests(unittest.TestCase):
         ]
         chart = build_chart(rows, self.status(), 180, 100.0, 400.0)
         self.assertEqual(2_147_483_647, chart["peak_online"])
-        self.assertEqual(2_576_980_377, chart["y_max"])
+        self.assertEqual(2_147_483_647, chart["y_max"])
         self.assertNotIn("inf", chart["line_points"].lower())
         self.assertNotIn("nan", chart["line_points"].lower())
+
+    def test_template_renders_bars_markers_and_segmented_lines_independently(self) -> None:
+        template = (Path(__file__).resolve().parents[1] / "templates" / "status.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("{% if line_segments or point_markers %}", template)
+        self.assertIn("{% for segment in line_segments %}", template)
+        self.assertIn("{% for bar in offline_bars %}", template)
+        self.assertIn("{% for marker in latency_markers %}", template)
 
 
 class RenderCacheTests(unittest.TestCase):
@@ -211,9 +265,8 @@ class KeyedLocksTests(unittest.IsolatedAsyncioTestCase):
 @dataclass
 class _Settings:
     timeout_seconds: float = 1.0
-    protocol_version: int = 760
-    send_latency_ping: bool = False
     sample_reuse_seconds: int = 30
+    latency_warning_ms: int = 200
 
 
 class _MemoryStore:

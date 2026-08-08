@@ -55,14 +55,6 @@
         "port": {
           "label": "Port"
         },
-        "protocol_version": {
-          "label": "Protocol version",
-          "help": "Used only for the status handshake. The default is normally suitable."
-        },
-        "send_latency_ping": {
-          "label": "Send latency ping",
-          "help": "Send an additional Minecraft latency ping after the status query."
-        },
         "allow_private_chat": {
           "label": "Allow private queries",
           "help": "Generate an image when motd or /motd is sent in a private chat."
@@ -121,6 +113,10 @@
         },
         "max_chart_points": {
           "label": "Maximum chart points"
+        },
+        "latency_warning_ms": {
+          "label": "High-latency threshold",
+          "help": "Successful samples above this value show as yellow points; connection failures always show as red bars."
         }
       },
       "groups": {
@@ -140,7 +136,8 @@
         "seconds": "sec",
         "bytes": "bytes",
         "hours": "hours",
-        "days": "days"
+        "days": "days",
+        "milliseconds": "ms"
       },
       "actions": {
         "reload": "Reload",

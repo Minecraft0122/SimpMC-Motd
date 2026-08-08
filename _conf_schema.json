@@ -17,18 +17,6 @@
     "hint": "25565",
     "default": 25565
   },
-  "protocol_version": {
-    "description": "状态握手使用的 Minecraft Java 协议版本。只用于 status 查询，通常保持默认即可",
-    "type": "int",
-    "hint": "760",
-    "default": 760
-  },
-  "send_latency_ping": {
-    "description": "是否在 status 查询后额外发送 Minecraft latency ping 包。当前图片不显示延迟，默认关闭以减少服务器收到的 ping 请求",
-    "type": "bool",
-    "hint": "false",
-    "default": false
-  },
   "query_interval_seconds": {
     "description": "后台采样间隔，单位秒",
     "type": "int",
@@ -144,5 +132,11 @@
     "type": "int",
     "hint": "180",
     "default": 180
+  },
+  "latency_warning_ms": {
+    "description": "状态图将成功采样的延迟严格高于此值时标成黄色点，单位毫秒。连接失败始终显示为红色条",
+    "type": "int",
+    "hint": "200",
+    "default": 200
   }
 }

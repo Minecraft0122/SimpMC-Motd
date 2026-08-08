@@ -4,8 +4,6 @@ const DEFAULT_SETTINGS = Object.freeze({
   server_name: "Minecraft Server",
   host: "127.0.0.1",
   port: 25565,
-  protocol_version: 760,
-  send_latency_ping: false,
   query_interval_seconds: 300,
   max_parallel_queries: 4,
   render_cache_seconds: 45,
@@ -24,6 +22,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   chart_hours: 24,
   retention_days: 30,
   max_chart_points: 180,
+  latency_warning_ms: 200,
   group_servers: [],
 });
 
@@ -36,7 +35,6 @@ const STRING_FIELDS = Object.freeze([
 
 const INTEGER_FIELDS = Object.freeze([
   "port",
-  "protocol_version",
   "query_interval_seconds",
   "max_parallel_queries",
   "render_cache_seconds",
@@ -46,6 +44,7 @@ const INTEGER_FIELDS = Object.freeze([
   "chart_hours",
   "retention_days",
   "max_chart_points",
+  "latency_warning_ms",
 ]);
 
 const FLOAT_FIELDS = Object.freeze([
@@ -56,7 +55,6 @@ const FLOAT_FIELDS = Object.freeze([
 ]);
 
 const BOOLEAN_FIELDS = Object.freeze([
-  "send_latency_ping",
   "enable_group_whitelist",
   "allow_private_chat",
   "use_default_server_for_unconfigured_groups",
