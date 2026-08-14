@@ -51,26 +51,62 @@ def _downsample_observations(
     if limit <= 0 or len(rows) <= limit:
         return list(rows)
 
-    required_indices = {0, len(rows) - 1}
-    for index, row in enumerate(rows):
+    observation_kinds: list[str] = []
+    for row in rows:
         if not bool(_row_value(row, "success")):
-            required_indices.add(index)
+            observation_kinds.append("offline")
+            continue
+        if _row_value(row, "online") is None:
+            observation_kinds.append("missing")
             continue
         try:
             latency = int(_row_value(row, "latency_ms"))
         except (TypeError, ValueError, OverflowError):
+            latency = None
+        observation_kinds.append(
+            "high_latency" if latency is not None and latency > latency_warning_ms else "online"
+        )
+
+    priority_indices = [0, len(rows) - 1]
+    for kind in dict.fromkeys(observation_kinds):
+        priority_indices.append(observation_kinds.index(kind))
+
+    peak_index: int | None = None
+    peak_online = -1
+    for index, row in enumerate(rows):
+        if observation_kinds[index] not in {"online", "high_latency"}:
             continue
-        if latency > latency_warning_ms:
-            required_indices.add(index)
+        online = _player_count(_row_value(row, "online"))
+        if online > peak_online:
+            peak_online = online
+            peak_index = index
+    if peak_index is not None:
+        priority_indices.append(peak_index)
+
+    required_indices = set(priority_indices)
+    transition_indices: set[int] = set()
+    for index in range(1, len(rows)):
+        if observation_kinds[index] != observation_kinds[index - 1]:
+            transition_indices.update((index - 1, index))
 
     if len(required_indices) >= limit:
-        ordered = sorted(required_indices)
-        return [rows[index] for index in downsample_rows(ordered, limit)]
+        selected = list(dict.fromkeys(priority_indices))[:limit]
+        return [rows[index] for index in sorted(selected)]
+
+    remaining_slots = limit - len(required_indices)
+    transition_candidates = sorted(transition_indices - required_indices)
+    selected_transitions = downsample_rows(
+        transition_candidates,
+        min(remaining_slots, len(transition_candidates)),
+    )
+    required_indices.update(selected_transitions)
+
+    remaining_slots = limit - len(required_indices)
+    if remaining_slots <= 0:
+        return [rows[index] for index in sorted(required_indices)]
 
     ordinary_indices = [index for index in range(len(rows)) if index not in required_indices]
-    selected_indices = required_indices | set(
-        downsample_rows(ordinary_indices, limit - len(required_indices))
-    )
+    selected_indices = required_indices | set(downsample_rows(ordinary_indices, remaining_slots))
     return [rows[index] for index in sorted(selected_indices)]
 
 
@@ -82,7 +118,7 @@ def build_y_ticks(
     height = plot_bottom - plot_top
     ticks: list[dict[str, str]] = [{"label": str(y_max), "y": str(plot_top + 8)}]
     if y_max > 5:
-        step = max(5, int(math.ceil((y_max / 4) / 5) * 5))
+        step = max(5, int(math.ceil((y_max / 3) / 5) * 5))
         values = []
         for value in range(step, y_max, step):
             y = plot_bottom - (value / y_max) * height
@@ -217,8 +253,8 @@ def build_chart(
         chart_status = "error"
         chart_color = "#ff5f6d"
         chart_fill_opacity = "0.18"
-        chart_axis_color = chart_color
-        chart_tick_color = chart_color
+        chart_axis_color = "#cbd2dc"
+        chart_tick_color = "#aeb7c3"
         empty_text = "服务器连接失败"
     elif len(successful) < 2:
         chart_status = "empty"
@@ -231,8 +267,8 @@ def build_chart(
         chart_status = "ok"
         chart_color = "#58f15f"
         chart_fill_opacity = "0.70"
-        chart_axis_color = "#ffffff"
-        chart_tick_color = "#d2d8e2"
+        chart_axis_color = "#cbd2dc"
+        chart_tick_color = "#aeb7c3"
         empty_text = ""
 
     return {

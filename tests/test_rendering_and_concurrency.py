@@ -93,6 +93,71 @@ class ChartTests(unittest.TestCase):
         self.assertEqual(1, len(chart["offline_bars"]))
         self.assertEqual(1, len(chart["latency_markers"]))
 
+    def test_long_offline_run_does_not_displace_later_online_curve(self) -> None:
+        rows = []
+        for minute in range(12 * 60 + 1):
+            offline = minute < 180
+            rows.append(
+                {
+                    "sampled_at": minute * 60.0,
+                    "success": 0 if offline else 1,
+                    "online": None if offline else 30 + minute % 8,
+                    "latency_ms": 999 if offline else 50,
+                }
+            )
+        current = self.status()
+        current.sampled_at = 12 * 3600.0
+        current.online = 37
+
+        chart = build_chart(rows, current, 180, 0.0, current.sampled_at, 200)
+
+        self.assertGreater(len(chart["offline_bars"]), 1)
+        self.assertGreater(len(chart["line_segments"]), 0)
+        plotted_online_points = sum(
+            len(segment["line_points"].split()) for segment in chart["line_segments"]
+        )
+        self.assertGreater(plotted_online_points, 100)
+        self.assertIn("742.0,", chart["line_segments"][-1]["line_points"])
+
+    def test_dense_state_changes_keep_each_visual_state(self) -> None:
+        rows = []
+        for index in range(100):
+            state = index % 3
+            rows.append(
+                {
+                    "sampled_at": float(index),
+                    "success": state != 1,
+                    "online": None if state == 1 else 10,
+                    "latency_ms": 201 if state == 2 else 50,
+                }
+            )
+
+        chart = build_chart(rows, self.status(), 20, 0.0, 100.0, 200)
+
+        self.assertGreater(len(chart["offline_bars"]), 0)
+        self.assertGreater(len(chart["latency_markers"]), 0)
+        plotted_online_points = sum(
+            len(segment["line_points"].split()) for segment in chart["line_segments"]
+        ) + len(chart["point_markers"])
+        self.assertGreater(plotted_online_points, 0)
+        self.assertLessEqual(len(chart["offline_bars"]) + plotted_online_points, 20)
+
+    def test_downsampling_keeps_observed_player_peak(self) -> None:
+        rows = [
+            {
+                "sampled_at": float(index),
+                "success": 1,
+                "online": 100 if index == 53 else 10,
+                "latency_ms": 50,
+            }
+            for index in range(100)
+        ]
+
+        chart = build_chart(rows, self.status(), 20, 0.0, 100.0, 200)
+
+        plotted_points = " ".join(segment["line_points"] for segment in chart["line_segments"])
+        self.assertTrue(any(point.endswith(",18.0") for point in plotted_points.split()))
+
     def test_single_point_empty_and_offline_states(self) -> None:
         row = {"sampled_at": 250.0, "success": 1, "online": -4}
         empty = build_chart([row], self.status(), 180, 100.0, 400.0)
@@ -125,6 +190,10 @@ class ChartTests(unittest.TestCase):
         self.assertEqual("37", y_ticks[0]["label"])
         self.assertEqual("0", y_ticks[-1]["label"])
         self.assertTrue(all(int(tick["label"]) % 5 == 0 for tick in y_ticks[1:-1]))
+        self.assertEqual(
+            ["51", "40", "20", "0"],
+            [tick["label"] for tick in build_y_ticks(51, 18, 296)],
+        )
 
     def test_untrusted_player_counts_are_bounded_before_float_math(self) -> None:
         rows = [
@@ -142,10 +211,15 @@ class ChartTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("{% if line_segments or point_markers %}", template)
         self.assertIn("{% for segment in line_segments %}", template)
         self.assertIn("{% for bar in offline_bars %}", template)
         self.assertIn("{% for marker in latency_markers %}", template)
+        self.assertNotIn("<polygon", template)
+        self.assertNotIn("lineGlow", template)
+        self.assertIn('stroke-width="2"', template)
+        self.assertIn('y2="288"', template)
+        self.assertEqual(template.count("{% for "), template.count("{% endfor %}"))
+        self.assertEqual(template.count("{% if "), template.count("{% endif %}"))
 
 
 class RenderCacheTests(unittest.TestCase):

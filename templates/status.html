@@ -188,43 +188,35 @@
 
     <div class="chart">
       <svg viewBox="0 0 758 350" preserveAspectRatio="none" aria-hidden="true">
-        <defs>
-          <linearGradient id="lineGlow" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="{{ line_color }}" stop-opacity="{{ chart_fill_opacity }}"/>
-            <stop offset="100%" stop-color="{{ line_color }}" stop-opacity="0.06"/>
-          </linearGradient>
-        </defs>
-        <line x1="38" y1="18" x2="38" y2="296" stroke="{{ chart_axis_color }}" stroke-width="2"/>
-        <line x1="38" y1="296" x2="742" y2="296" stroke="{{ chart_axis_color }}" stroke-width="2"/>
+        {% for bar in offline_bars %}
+        <rect x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}" fill="#ff5f6d" opacity="0.88"/>
+        {% endfor %}
+
+        {% for segment in line_segments %}
+        <polyline points="{{ segment.line_points }}" fill="none" stroke="{{ line_color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        {% endfor %}
+        {% for marker in point_markers %}
+        <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="3.5" fill="{{ line_color }}"/>
+        {% endfor %}
+        {% for marker in latency_markers %}
+        <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="4.5" fill="#ffd34e" stroke="#fff3b0" stroke-width="1.5"/>
+        {% endfor %}
+
+        <line x1="38" y1="18" x2="38" y2="296" stroke="{{ chart_axis_color }}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+        <line x1="38" y1="296" x2="742" y2="296" stroke="{{ chart_axis_color }}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
 
         {% for tick in y_ticks %}
         <text x="31" y="{{ tick.y }}" text-anchor="end" fill="{{ chart_tick_color }}" font-size="24">{{ tick.label }}</text>
         {% endfor %}
 
         {% for tick in x_ticks %}
+        <line x1="{{ tick.x }}" y1="296" x2="{{ tick.x }}" y2="288" stroke="{{ chart_axis_color }}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
         <text x="{{ tick.x }}" y="335" text-anchor="{{ tick.anchor }}" fill="{{ chart_tick_color }}" font-size="25">{{ tick.time }}</text>
         {% endfor %}
 
-        {% if line_segments or point_markers %}
-        {% for segment in line_segments %}
-        <polygon points="{{ segment.area_points }}" fill="url(#lineGlow)"/>
-        <polyline points="{{ segment.line_points }}" fill="none" stroke="{{ line_color }}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        {% endfor %}
-        {% for marker in point_markers %}
-        <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="5.5" fill="{{ line_color }}"/>
-        {% endfor %}
         {% if empty_text %}
-        <text x="312" y="160" fill="{{ chart_color }}" font-size="22">{{ empty_text }}</text>
+        <text x="390" y="160" text-anchor="middle" fill="{{ chart_color }}" font-size="22">{{ empty_text }}</text>
         {% endif %}
-        {% else %}
-        <text x="312" y="160" fill="{{ chart_color }}" font-size="22">{{ empty_text }}</text>
-        {% endif %}
-        {% for bar in offline_bars %}
-        <rect x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}" fill="#ff5f6d" opacity="0.88"/>
-        {% endfor %}
-        {% for marker in latency_markers %}
-        <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="6" fill="#ffd34e" stroke="#fff3b0" stroke-width="2"/>
-        {% endfor %}
       </svg>
       <div class="footer">{{ scope_label }} · {{ current.sampled_at_text }}</div>
     </div>
