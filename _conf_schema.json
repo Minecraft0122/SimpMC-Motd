@@ -66,7 +66,7 @@
     "default": 3600
   },
   "background_fetch_timeout_seconds": {
-    "description": "插件预取远程背景图的超时时间，单位秒。超时后使用旧缓存；没有旧缓存时使用内置背景",
+    "description": "插件预取远程背景图的超时时间，单位秒。超时后使用旧缓存；没有旧缓存时使用黑色背景",
     "type": "float",
     "hint": "5.0",
     "default": 5.0

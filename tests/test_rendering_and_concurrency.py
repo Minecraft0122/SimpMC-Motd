@@ -214,6 +214,12 @@ class ChartTests(unittest.TestCase):
         self.assertIn("{% for segment in line_segments %}", template)
         self.assertIn("{% for bar in offline_bars %}", template)
         self.assertIn("{% for marker in latency_markers %}", template)
+        self.assertIn("fallback-background", template)
+        self.assertIn("background_is_fallback", template)
+        self.assertIn(
+            "{% if background_image_url and not background_is_fallback %}",
+            template,
+        )
         self.assertNotIn("<polygon", template)
         self.assertNotIn("lineGlow", template)
         self.assertIn('stroke-width="2"', template)

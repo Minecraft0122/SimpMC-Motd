@@ -135,17 +135,9 @@ def fallback_background_data_uri(width: int = 316, height: int = 200) -> str:
     if width < 1 or height < 1 or width * height > 1_000_000:
         raise ValueError("内置背景尺寸不合法")
     rows = bytearray()
-    for y in range(height):
+    for _ in range(height):
         rows.append(0)
-        for x in range(width):
-            nx = x / max(1, width - 1)
-            ny = y / max(1, height - 1)
-            diagonal = ((x + y * 2) // 26) % 2
-            band = max(0.0, 1.0 - abs((nx * 1.25 + ny * 0.55) - 0.92) * 2.4)
-            red = int(34 + 38 * nx + 22 * ny + 34 * band + 18 * diagonal)
-            green = int(62 + 48 * nx + 30 * ny + 68 * band + 12 * diagonal)
-            blue = int(84 + 54 * nx + 48 * ny + 50 * band + 24 * diagonal)
-            rows.extend((min(255, red), min(255, green), min(255, blue)))
+        rows.extend((0, 0, 0) * width)
 
     def chunk(kind: bytes, payload: bytes) -> bytes:
         return (
@@ -285,21 +277,27 @@ def _open_public_response(
         ascii_hostname,
         port,
     )
+    # Some hosts advertise an unreachable IPv6 address before a working IPv4
+    # address. Prefer IPv4 so one stalled IPv6 connect cannot consume the
+    # entire absolute deadline before the usable address is attempted.
+    addresses = sorted(addresses, key=lambda item: item[0] == socket.AF_INET6)
     context = ssl.create_default_context() if parsed.scheme == "https" else None
     last_error: Exception | None = None
 
-    for family, socket_type, protocol, socket_address in addresses:
+    for address_index, (family, socket_type, protocol, socket_address) in enumerate(addresses):
         try:
             remaining = _remaining_timeout(deadline)
         except TimeoutError as exc:
             raise TimeoutError("背景图下载超时") from last_error or exc
+        remaining_addresses = len(addresses) - address_index
+        connect_timeout = min(remaining, max(0.2, remaining / remaining_addresses))
         active_socket: socket.socket | ssl.SSLSocket | None = None
         connection: http.client.HTTPConnection | None = None
         deadline_guard: _SocketDeadlineGuard | None = None
         try:
             active_socket = socket.socket(family, socket_type, protocol)
             deadline_guard = _SocketDeadlineGuard(active_socket, remaining)
-            active_socket.settimeout(remaining)
+            active_socket.settimeout(connect_timeout)
             active_socket.connect(socket_address)
             if context is not None:
                 active_socket.settimeout(_remaining_timeout(deadline))
@@ -539,11 +537,11 @@ class BackgroundImageService:
                     image_url=cache.image_url,
                     warning=warning + "\n已使用旧背景缓存。",
                 )
-            self._warn(f"背景图预取失败，改用内置背景: {exc}")
+            self._warn(f"背景图预取失败，已尝试访问并改用黑色背景: {exc}")
             return BackgroundRenderImage(
                 image_url=fallback_background_data_uri(),
                 is_fallback=True,
-                warning=warning + "\n已使用内置背景。",
+                warning=warning + "\n已使用黑色背景。",
             )
         finally:
             if task.done():

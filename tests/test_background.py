@@ -6,6 +6,7 @@ import socket
 import threading
 import time
 import unittest
+import zlib
 from unittest.mock import Mock, call, patch
 
 from simpmc_motd.rendering.background import (
@@ -42,6 +43,17 @@ class BackgroundValidationTests(unittest.TestCase):
         data = _decode_data_uri(fallback_background_data_uri())
         self.assertEqual("image/png", _detect_image_type(data))
         _validate_image_dimensions(data, "image/png")
+        chunks = []
+        offset = 8
+        while offset + 12 <= len(data):
+            length = int.from_bytes(data[offset : offset + 4], "big")
+            kind = data[offset + 4 : offset + 8]
+            payload = data[offset + 8 : offset + 8 + length]
+            if kind == b"IDAT":
+                chunks.append(payload)
+            offset += 12 + length
+        scanlines = zlib.decompress(b"".join(chunks))
+        self.assertEqual(b"\x00\x00\x00\x00", scanlines[:4])
 
     def test_oversized_png_and_animated_webp_are_rejected(self) -> None:
         huge_png = (
@@ -166,7 +178,7 @@ class BackgroundValidationTests(unittest.TestCase):
 
         self.assertIs(connection, actual_connection)
         self.assertIs(response, actual_response)
-        first_socket.settimeout.assert_called_once_with(10.0)
+        first_socket.settimeout.assert_called_once_with(5.0)
         first_socket.connect.assert_called_once_with(first_address[4])
         first_socket.close.assert_called_once_with()
         second_socket.connect.assert_called_once_with(second_address[4])
@@ -185,6 +197,52 @@ class BackgroundValidationTests(unittest.TestCase):
                 "Connection": "close",
             },
         )
+
+    def test_ipv4_is_attempted_before_ipv6_when_dns_lists_ipv6_first(self) -> None:
+        ipv6_address = (
+            socket.AF_INET6,
+            socket.SOCK_STREAM,
+            6,
+            "",
+            ("2001:4860:4860::8888", 80, 0, 0),
+        )
+        ipv4_address = (
+            socket.AF_INET,
+            socket.SOCK_STREAM,
+            6,
+            "",
+            ("93.184.216.34", 80),
+        )
+        ipv4_socket = Mock()
+        response = Mock()
+        connection = Mock()
+        connection.getresponse.return_value = response
+
+        with (
+            patch(
+                "socket.getaddrinfo",
+                return_value=[ipv6_address, ipv4_address],
+            ),
+            patch(
+                "simpmc_motd.rendering.background.socket.socket",
+                return_value=ipv4_socket,
+            ) as socket_factory,
+            patch(
+                "simpmc_motd.rendering.background.http.client.HTTPConnection",
+                return_value=connection,
+            ),
+            patch("simpmc_motd.rendering.background.time.monotonic", return_value=100.0),
+        ):
+            actual_connection, actual_response, deadline_guard = _open_public_response(
+                "http://background.example/image.png",
+                deadline=110.0,
+            )
+        deadline_guard.cancel()
+
+        self.assertIs(connection, actual_connection)
+        self.assertIs(response, actual_response)
+        socket_factory.assert_called_once_with(socket.AF_INET, socket.SOCK_STREAM, 6)
+        ipv4_socket.connect.assert_called_once_with(ipv4_address[4])
 
     def test_exhausted_deadline_prevents_trying_the_next_address(self) -> None:
         addresses = [
@@ -373,9 +431,14 @@ class BackgroundImageServiceTests(unittest.IsolatedAsyncioTestCase):
         with patch(
             "simpmc_motd.rendering.background.fetch_image_data_uri",
             side_effect=OSError("unavailable"),
-        ):
+        ) as fetch:
             result = await service.get()
 
+        fetch.assert_called_once_with(
+            "https://example.com/background.png?token=secret#fragment",
+            1.0,
+            1024 * 1024,
+        )
         self.assertTrue(result.is_fallback)
         self.assertTrue(result.image_url.startswith("data:image/png;base64,"))
         self.assertIn("https://example.com", result.warning)

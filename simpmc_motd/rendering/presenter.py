@@ -68,8 +68,8 @@ class StatusPresenter:
         background_opacity = self._settings.background_opacity
         overlay_opacity = self._settings.background_overlay_opacity
         if background.is_fallback:
-            background_opacity = max(background_opacity, 0.92)
-            overlay_opacity = min(overlay_opacity, 0.36)
+            background_opacity = 1.0
+            overlay_opacity = 0.0
         current_view = {
             "ok": current.ok,
             "online": current.online,
@@ -89,6 +89,7 @@ class StatusPresenter:
             "current": current_view,
             "x_ticks": build_x_ticks(start_ts, end_ts),
             "background_image_url": background.image_url,
+            "background_is_fallback": background.is_fallback,
             "background_opacity": f"{background_opacity:.2f}",
             "background_overlay_opacity": f"{overlay_opacity:.2f}",
             "background_warning": background.warning,

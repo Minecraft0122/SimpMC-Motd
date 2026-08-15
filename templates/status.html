@@ -34,6 +34,14 @@
       overflow: hidden;
     }
 
+    .card.fallback-background {
+      background: #000000;
+    }
+
+    .card.fallback-background::after {
+      background: transparent;
+    }
+
     .bg-image {
       position: absolute;
       inset: 0;
@@ -162,8 +170,8 @@
   </style>
 </head>
 <body>
-  <div class="card">
-    {% if background_image_url %}
+  <div class="card{% if background_is_fallback %} fallback-background{% endif %}">
+    {% if background_image_url and not background_is_fallback %}
     <img class="bg-image" src="{{ background_image_url }}" alt="">
     {% endif %}
 
